@@ -1,0 +1,399 @@
+##  Plotting in R and Examining Three or More Variables
+#### Liang Sun
+#### July 5, 2017
+
+
+Plotting in R in response to lesson 8's problem Set "Explore Many Variables."
+
+----
+### Dataset 1: Diamonds
+
+Description of data:
+```
+A data frame with 53940 rows and 10 variables:
+
+price: price in US dollars (\$326–\$18,823)
+carat: weight of the diamond (0.2–5.01)
+cut: quality of the cut (Fair, Good, Very Good, Premium, Ideal)
+color: diamond color, from J (worst) to D (best)
+clarity: how clear the diamond is (I1 (worst), SI1, SI2, VS1, VS2, VVS1, VVS2, IF (best))
+x: length in mm (0–10.74)
+y: width in mm (0–58.9)
+z: depth in mm (0–31.8)
+depth: total depth percentage = z / mean(x, y) = 2 * z / (x + y) (43–79)
+table: width of top of diamond relative to widest point (43–95)
+
+```
+
+#### 1. Quiz: Price histogram with facet and color
+##### Use the diamonds data and create a histogram of diamond prices. Facet the histogram by diamond color and use cut to color the histogram bars.
+
+```{r}
+library(ggplot2)
+names(diamonds)
+
+ggplot(aes(x = price, fill = cut), data = diamonds) +
+  geom_histogram() +
+  scale_x_log10() +
+  facet_wrap(~color, ncol = 3) +
+  scale_fill_brewer(type = 'qual')
+```
+
+![graph](/image/8_1.png)
+
+The graphs are separated by colors of the diamond. Colors from J to D are from best to worst.
+- In general, the count of diamonds with good colors are fewer than diamonds with bad colors.
+- Also, for each category of color, the count of diamonds decreases as the cut becomes better.
+- There is not a fixed or evident pattern between count and price, because price here is not the unit price by weight but the sale price which are related to the size of diamonds.
+
+
+#### 2. Price vs. Table Colored by Cut
+##### Create a scatterplot of diamond price vs.table and color the points by the cut of the diamond.
+```{r}
+ggplot(aes(x = table, y = price, color = cut), data = diamonds) +
+  geom_point() +
+  scale_x_continuous(limits = c(50, 80), breaks = seq(50, 80, 2)) +
+  scale_color_brewer(type = 'qual')
+```
+![graph](/image/8_2.png)
+
+Table is the width of top of diamond relative to widest point. From the graph above, we can tell:
+- Table is highly related to the cut of diamond, that is, diamonds with ideal cut tend to have lower table values. It suggests that table can indicate how well the shape of the diamond has been cut. The smaller the width of the top of diamond relative to the widest point, the better.
+- For each cut and table value, the price can vary greatly from high to low. However, diamonds with high table value and fair cut tend to have lower price.
+
+#### 3. Typical Table Range?
+
+From the graph above, it can be observed that:
+- The typical table range for the majority of diamonds of ideal cut is 53 to 57;
+- The typical table range for the majority of diamonds of premium cut is 58 to 62.
+
+
+#### 4. Price vs. Volume and Diamond Clarity
+##### Create a scatterplot of diamond price vs.volume (x * y * z) and color the points by the clarity of diamonds. Use scale on the y-axis to take the log10 of price. You should also omit the top 1% of diamond volumes from the plot.
+
+```{r}
+ggplot(aes(x = x * y * z, y = price, color = clarity),
+       data = subset(diamonds,x * y * z <= quantile(x * y * z, 0.99))) +
+  geom_point() +
+  scale_y_log10() +
+  scale_color_brewer(type = 'qual', guide = guide_legend(reverse = TRUE))
+#guide is used to format the type of legend  
+```
+![graph](/image/8_3.png)
+
+Clarity from l1 to IF is from worst to best.
+
+- Overall, the price of a diamond increases as the volume increases. The increase rate for diamonds with better clarity is higher than diamonds with lower clarity.
+- Most diamonds with higher clarity have smaller volume, maybe because it takes more grinding work to get better clarity in which process diamonds lose their size, or because diamonds with highest clarity are so precious that it is more profitable to sell them in smaller pieces to more people.
+
+
+
+#### 5. Price/Carat Binned, Faceted, & Colored
+##### Create a scatter plot of the price/carat ratio of diamonds. The variable x should be assigned to cut. The points should be colored by diamond color, and the plot should be faceted by clarity.
+
+```{r}
+ggplot(aes(x = cut, y = price / carat, color = color), data = diamonds) +
+  geom_point(position = "jitter") +
+  scale_color_brewer(type = 'div') +
+  facet_wrap(~clarity, ncol = 3)
+
+# The jitter geom is a convenient shortcut for geom_point(position = "jitter").
+# It adds a small amount of random variation to the location of each point,
+# and is a useful way of handling overplotting caused by discreteness in smaller datasets.
+```
+![graph](/image/8_6.png)
+---
+
+Price is not an ideal variable for exploring the relationship between it and other variables because price depends on the size of the diamond and does not show the exact value of the diamond. So the graph above use price per carat instead of price.
+
+Color from D to J is from best to worst.
+Cut from IF to l1 is from best to worst.
+
+- It is obvious that the price/carat varies more greatly for better cut diamonds.
+- In each category of cut, diamonds with better color have higher price/carat.
+- This graph suggests a more clear and reasonable pattern between price/carat and cut or color than previous graphs of the relationship between price and cut or color.
+
+What I have learned from the graphs is that the selection or transformation of variables is important for exploring patterns.
+
+---
+
+### Dataset 2: Facebook
+
+Variables in the data:
+```
+[1] "userid"                "age"                   "dob_day"              
+[4] "dob_year"              "dob_month"             "gender"               
+[7] "tenure"                "friend_count"          "friendships_initiated"
+[10] "likes"                 "likes_received"        "mobile_likes"         
+[13] "mobile_likes_received" "www_likes"             "www_likes_received"   
+[16] "prop_initiated"        "year_joined"           "year_joined.bucket"
+
+```
+
+#### 1. Proportion of Freindships Initiated
+##### Create a new variable called 'prop_initiated' in the Pseudo-Facebook data set. The variable should contain the proportion of friendships that the user initiated among his/her all friendships.
+
+```{r}
+pf <- read.delim('pseudo_facebook.tsv')
+pf$prop_initiated <- pf$friendships_initiated / pf$friend_count
+```
+
+
+#### 2. prop_initiated vs tenure
+##### Create a line graph of the median proportion of friendships initiated ('prop_initiated') vs. tenure and color the line segment by year_joined.bucket.
+
+```{r}
+pf$year_joined <- floor(2014 - pf$tenure/365)
+
+pf$year_joined.bucket <- cut(pf$year_joined,
+                             breaks = c(2004, 2009, 2011, 2012, 2014),
+                             include.lowest = FALSE)
+
+ggplot(aes(x = tenure, y = prop_initiated),
+       data = subset(pf, !is.na(year_joined.bucket) & tenure > 0 & prop_initiated < 1)) +
+  geom_line(aes(color = year_joined.bucket), stat = 'summary',
+            fun.y = median)  
+
+```
+![graph](/image/8_4.png)
+
+- Tenure is the number of days since the user started FB account.
+- Tenure is estimated on the day level; but year_joined calculates the time on the year level.
+- Because there are so many users on FB who started on the same day, the value of proportion of friendship initiated by the user ranges greatly for each value of tenure, and the variance becomes even larger for users who have used for longer time.
+- It seems that newer users tend to have higher proportion of friendship initiated by themselves.
+
+#### 3. Smoothing prop_initiated vs tenure
+##### Smooth the last plot you created of prop_initiated vs tenure colored by year_joined.bucket. You can bin together ranges of tenure or add a smoother to the plot.
+
+```{r}
+
+ggplot(aes(x = 7 * round(tenure / 7), y = prop_initiated / tenure),
+       data = subset(pf, tenure > 0)) +
+  geom_smooth(aes(color = year_joined.bucket))
+
+```
+![graph](/image/8_5.png)
+
+Since the prop_initiated decreases as tenure increases, how would prop_initiated differ by tenure when tenure is supposedly equal to everyone?
+- The prop_initiated/tenure seems much higher for people with shorter tenure (which is rounded into the multiples of 7 here).
+- The group of people who joined after 2012 initiated the greatest proportion of its Facebook friendships.
+
+
+#### 4. Largest group mean prop_initiated
+```{r}
+by(pf$prop_initiated, pf$year_joined.bucket, summary)
+```
+
+```
+pf$year_joined.bucket: (2004,2009]
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's
+ 0.0000  0.3418  0.4672  0.4668  0.5910  1.0000       5
+------------------------------------------------------------------
+pf$year_joined.bucket: (2009,2011]
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's
+ 0.0000  0.3924  0.5357  0.5301  0.6750  1.0000      81
+------------------------------------------------------------------
+pf$year_joined.bucket: (2011,2012]
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's
+ 0.0000  0.4576  0.6189  0.5985  0.7619  1.0000     408
+------------------------------------------------------------------
+pf$year_joined.bucket: (2012,2014]
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's
+ 0.0000  0.5115  0.7018  0.6654  0.8490  1.0000    1468
+```
+
+
+- The mean proportion of this largest group is 0.6654.
+- The people who joined after 2012 are more likely to be younger and more comfortable with and actively using social media, so they are more likely to initiated friendship online.
+
+
+
+---
+### Dataset 3: Gapminder
+
+#### 1. Gapminder Multivariate Analysis
+##### Examine 3 or more variables and create 2-5 plots that make use of the techniques from Lesson 5.
+
+I downloaded three files from Gapminder website: age of marriage of women, the number of kids per woman, and GDP per capita of countries.
+
+Need to read and clean the 3 datasets first:
+##### Data 1: marriage
+```{r}
+marriage <- read.csv('age of marriage.csv', header = TRUE)
+
+names(marriage)
+#column names have "X"
+
+#remove "X" from col names
+names(marriage) <- gsub("X", "", names(marriage), fixed = TRUE)
+# the first column is country
+colnames(marriage)[1] <- "country"
+#create a boxplot over two years: very few years have many valid values
+years <- c('country','1970',  '2005')
+
+two_data <- na.omit(marriage[years])
+
+colnames(two_data)[2] <- 'year_1970'
+colnames(two_data)[3] <- 'year_2005'
+
+#reshape into long format so as to draw plot of two years
+two_data <- reshape(two_data, varying = c('year_1970', 'year_2005'),
+                    idvar = 'country', direction = 'long', sep = '_')
+colnames(two_data)[3] <- 'age'
+```
+
+##### Data 2: GDP per capita
+```
+gdppc <- read.csv('GDP per capita.csv', header = TRUE)
+names(gdppc)
+#remove "X" from col names
+names(gdppc) <- gsub("X", "", names(gdppc), fixed = TRUE)
+
+two_year <- na.omit(gdppc[years])
+
+colnames(two_year)[2] <- 'year_1970'
+colnames(two_year)[3] <- 'year_2005'
+
+#reshape into long format so as to draw plot of two years
+two_year <- reshape(two_year, varying = c('year_1970', 'year_2005'),
+                    idvar = 'country', direction = 'long', sep = '_')
+
+colnames(two_year)[3] <- 'gdppc'
+```
+
+##### Data 3: kids per woman
+```
+kids <- read.csv('kids.csv', header = TRUE)
+#remove "X" from col names
+names(kids) <- gsub("X", "", names(kids), fixed = TRUE)
+years <- c('country','1970',  '2005')
+two_year_data <- na.omit(kids[years])
+colnames(two_year_data)[2] <- 'year_1970'
+colnames(two_year_data)[3] <- 'year_2005'
+#reshape into long format so as to draw plot of two years
+two_year_data <- reshape(two_year_data, varying = c('year_1970', 'year_2005'),
+                    idvar = 'country', direction = 'long', sep = '_')
+
+colnames(two_year_data)[3] <- 'kids'
+```
+
+##### Merge three data frames
+
+```
+total <- merge(two_data, two_year,by = c('time','country'))
+total <- merge(total,  two_year_data, by = c('time','country'))
+# Change time into a factor variable
+total$time <- as.factor(total$time)
+```
+Now the data has five variables: country, time, age of marriage of woman, kids per woman, GDP per capita.
+
+After merging these three files, I got a subset of countries which have valid values for two years (1970 and 2005), because many countries have missing values for other years.
+
+There are 74 observations in the cleaned data.
+
+Summary statistics:
+```
+> summary(total$age)
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.
+  18.67   21.98   23.22   24.19   26.42   32.40
+> summary(total$kids)
+ 1  2
+10 64
+> summary(total$gdppc)
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.
+  122.3  1253.8  6096.6 10787.8 16870.8 51927.4
+
+```
+##### Plotting
+
+```{r}
+ggplot(aes(x = gdppc, y = age), data = total) +
+  geom_point() +
+  facet_wrap(~time) +
+  labs(x = 'GDP per capita',
+       y = 'Age of marriage')  
+ggsave('lesson8_1.png')
+```
+![graph](/image/lesson8_1.png)
+
+- Generally, countries with higher GDP per capita are likely to have higher average age of marriage for women.
+- The variance of GDP per capita has become larger over time.
+- The distribution of average age of marriage is also more dispersed in 2005 than in 1970.
+
+We can see that the scatter points gather more on the left part because GDP per capita is highly skewed, so I draw the graph by taking the natural log of x scale:
+
+```{r}
+
+ggplot(aes(x = gdppc, y = age), data = total) +
+  geom_point() +
+  scale_x_log10() +
+  facet_wrap(~time) +
+  labs(x = 'GDP per capita',
+       y = 'Age of marriage')
+ggsave('lesson8_2.png')
+```
+![graph](/image/lesson8_2.png)
+
+
+Then I check the relationship between GDP per capita and the number of kids per woman:
+
+```{r}
+ggplot(aes(x = gdppc, y = kids), data = total) +
+  geom_point() +
+  scale_x_log10() +
+  facet_wrap(~time) +
+  labs(x = 'GDP per capita',
+       y = 'Number of kids')
+ggsave('lesson8_3.png')
+```
+![graph](/image/lesson8_3.png)
+
+- Number of kids is either 1 or 2, so the scatter points gather only on these two levels.
+- In both 1970 and 2005, countries with 1 kid per woman are those with higher GDP per capita.
+
+Then I examine the relationship between age of marriage and the number of kids per woman:
+
+```{r}
+ggplot(aes(x = age, y = kids), data = total) +
+  geom_point() +
+  facet_wrap(~time) +
+  labs(x = 'Age of marriage',
+       y = 'Number of kids')
+ggsave('lesson8_4.png')
+```
+
+![graph](/image/lesson8_4.png)
+
+- Age of marriage has increased over time for most countries, and has become more spread out in 2005 than in 1970.
+- Countries with 1 kid per woman are likely to have a higher average age of marriage for women, especially in 2005.
+
+Finally, I check how the three variables - GDP per capita, age of marriage, and number of kids relate to each other simultaneously:
+
+```{r}
+summary(total$gdppc)
+
+# cut a variable: gdppc; breaks at quantiles
+total$gdppc.bucket <- cut(total$gdppc,
+                             breaks = c(0, 1250, 6000, 17000, 52000),
+                             include.lowest = FALSE)
+
+total$kids <- as.factor(total$kids)
+
+ggplot(aes(x = gdppc, y = age, color = kids),
+           data = total) +
+  geom_point() +
+  scale_color_brewer(type = 'qual') +
+  scale_x_log10() +
+  facet_wrap(~time) +
+  labs(colour = 'Kids',
+       x = 'GDP per capita',
+       y = 'Age of marriage')  
+ggsave('lesson8_5.png')
+
+```
+
+![graph](/image/lesson8_5.png)
+
+
+- Countries with higher GDP per capita have higher average age of marriage and fewer kids for women.
+- Or, countries with fewer kids per woman are those with higher GDP per capita and higher average of marriage for women.
